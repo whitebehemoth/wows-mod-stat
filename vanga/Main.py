@@ -1,5 +1,5 @@
 from battleStatDef import battleStat
-
+from shipInfoStat import all_ships
 API_VERSION = 'API_v1.0'
 MOD_NAME = 'Vanga'
 
@@ -44,6 +44,8 @@ class Vanga:
         for playerId in players_info_collection:
             player_info = players_info_collection[playerId]
             self.current_battle.ship_count[player_info.teamId][self.current_battle.counter] += int(player_info.isAlive)
+            ship_info=battle.getPlayerShipInfo(player_info.id)
+            #self.log_obj("si_"+str(player_info.id), ship_info)
         self.current_battle.counter += 1
         
         
@@ -52,33 +54,44 @@ class Vanga:
         #self.log_obj("after_battle_info", arg)
         stat = arg['common']
         me = arg['me']
+      
         ship_id = me["vehicle_type_id"]
-        sb = self.battles[ship_id] #just in case if this is a stat for a previous battle
-        sb.battle_id +=  'W' if sb.my_team_id == stat["winner_team_id"] else 'L'
-        filename = utils.getModDir() + '/vanga_result.csv'
-        filemode = 'a+' if utils.isFile(filename) else 'w+' #for some reason 'a' mode does not create file
-        with open(filename, filemode) as f:
-            f.write('\n{0},'.format(sb.battle_id)) 
-            f.write('{0},'.format(sb.my_level)) 
-            f.write('{0},'.format(stat["battle_type"])) 
-            f.write('{0},'.format(stat["duration_sec"])) 
-            f.write('{0},'.format(stat["winner_team_id"])) 
-            team0 = 0 if stat["winner_team_id"] == 0 else 1 #winner team always goes first for easier calculation
-            team1 = 1 if stat["winner_team_id"] == 0 else 0
-            for n in sb.ship_count[team0]: f.write('{0},'.format(n))  # could be simplified, but `map` functionality is not working in ModAPI
-            for n in sb.ship_count[team1]: f.write('{0},'.format(n))  
+        if ship_id in self.battles:
+            sb = self.battles[ship_id] #just in case if this is a stat for a previous battle
+            sb.battle_id +=  'W' if sb.my_team_id == stat["winner_team_id"] else 'L'
+            filename = utils.getModDir() + '/vanga_result.csv'
+            filemode = 'a+' if utils.isFile(filename) else 'w+' #for some reason 'a' mode does not create file
+            with open(filename, filemode) as f:
+                f.write('\n{0},'.format(sb.battle_id)) 
+                f.write('{0},'.format(sb.my_level)) 
+                f.write('{0},'.format(stat["battle_type"])) 
+                f.write('{0},'.format(stat["duration_sec"])) 
+                f.write('{0},'.format(stat["winner_team_id"])) 
+                team0 = 0 if stat["winner_team_id"] == 0 else 1 #winner team always goes first for easier calculation
+                team1 = 1 if stat["winner_team_id"] == 0 else 0
+                for n in sb.ship_count[team0]: f.write('{0},'.format(n))  # could be simplified, but `map` functionality is not working in ModAPI
+                for n in sb.ship_count[team1]: f.write('{0},'.format(n))  
+            interactions = arg['interactions']
         
-    #even registration
+        df = 'damage_stat/'+sb.battle_id+'.csv'
+        with open(df, 'w') as f:
+            f.write(str(interactions))
+
+    def addStat(self, ship_id, interactions):
+        if ship_id in all_ships:
+            ship_stat = all_ships[ship_id]
+
+
+    #event registration
     def setup_events(self):
         events.onBattleStart(self.on_battle_start)
         events.onBattleEnd(self.on_battle_end)
         events.onBattleStatsReceived(self.on_battle_get_stat)
         events.onBattleQuit(self.on_battle_quit)
 
+    def log_obj(self, filename, obj):
+        with open(filename, 'w+') as f:
+            f.write(str(obj))
 
 g_Vanga = Vanga()
 
-
-    # def log_obj(self, filename, obj):
-    #     with open(filename + self.battle_id, 'w+') as f:
-    #         f.write('%s'%(obj))
